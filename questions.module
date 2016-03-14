@@ -24,11 +24,19 @@ function questions_menu() {
 }
 
 function questions_list() {
-	$limit = variable_get("questions_page_limit", 30);
+	drupal_set_title(t("Отзывы"));
+	$limit = variable_get("questions_page_limit", 10);
 	$offset = (isset($_REQUEST["page"])) ? (intval($_REQUEST["page"])-1)*$limit : 0;
-	$questions = db_query("select q.qid as qid, q.body as qbody, q.created as qcreated, q.uid as quid, a.qid as aid, a.body as abody, a.created as acreated, a.parent as aqid, q.name as qname, a.name as aname from {questions} q left join {questions} a ON (a.parent = q.qid AND a.qid != q.qid) where q.parent = 0 group by q.qid order by q.qid desc limit $offset,$limit")
-					->fetchAll();
-	$data = array("result" => $questions);
+	$questions = db_select("questions", "q");
+	$questions->leftJoin("questions", "a", "a.parent = q.qid AND a.qid != q.qid");
+	$questions->fields("q", array("qid", "body", "created", "uid", "published", "name"));
+	$questions->fields("a", array("qid", "body", "created", "parent", "name"));
+	$questions->condition("q.parent", 0);
+	if (!user_access("administer questions"))
+		$questions->condition("q.published", 1);
+	$questions = $questions->extend('PagerDefault')->limit($limit)->groupBy("q.qid")->orderBy("q.qid", "DESC");
+	$result = $questions->execute()->fetchAll();
+	$data = array("result" => $result, "pager" => theme("pager", array('tags' => array())), "questions_form" => drupal_get_form("question_user_form"));
 	$output = theme("questions", $data);
 	return $output;
 }
@@ -54,10 +62,13 @@ function question_user_form_submit($form, &$form_state) {
 				'name' => htmlspecialchars($form_state["input"]["name"]),
 				'body' => htmlspecialchars($form_state["input"]["body"]),
 				'ip' => ip2long($_SERVER["REMOTE_ADDR"]),
-				'parent' => 0,
+				'parent' => (user_access("administer questions")) ? intval($form_state["input"]["parent"]) : 0,
 				'created' => time(),
 			))->execute();
-	drupal_set_message(t("Your review has been accepted for moderation. Thank you!"));
+	if (user_access("administer questions") && $form_state["input"]["parent"])
+		drupal_set_message(t("Your answer has been committed."));
+	else
+		drupal_set_message(t("Your review has been accepted for moderation. Thank you!"));
 }
 
 function question_user_form($form, &$form_state) {
@@ -88,6 +99,13 @@ function question_user_form($form, &$form_state) {
 		'#maxlength' => 64,
 		'#required' => TRUE,
 	);
+	
+	if (user_access("administer questions")):
+	$form['parent'] = array(
+		'#type' => 'hidden',
+		'#value' => 0,
+	);
+	endif;
 
 	$form['submit'] = array(
 		'#type' => 'submit',
@@ -102,7 +120,7 @@ function question_actions() {
 	if (!isset($_REQUEST["qid"]) || !isset($_REQUEST["action"])) die(json_encode(array()));
 	if (!is_numeric($_REQUEST["qid"])) die(json_encode(array()));
 	switch($_REQUEST["action"]):
-		case "activate": $query = "update {questions} set active = 1 where qid = :qid"; break;
+		case "activate": $query = "update {questions} set published = 1 where qid = :qid"; break;
 		case "remove": $query = "delete from {questions} where qid = :qid"; break;
 		default: die(json_encode(array())); break;
 	endswitch;

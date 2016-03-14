@@ -32,6 +32,7 @@ function questions_schema() {
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
+        'default' => 0,
         'description' => 'Parent question.',
       ),
       'ip' => array(
@@ -39,6 +40,13 @@ function questions_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
         'description' => 'Author IP.',
+      ),
+      'published' => array(
+	  	'type' => 'float',
+	  	'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Published or not.',
       ),
       'created' => array(
         'type' => 'int',
