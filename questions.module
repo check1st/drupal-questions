@@ -26,20 +26,43 @@ function questions_menu() {
 function questions_list() {
 	$limit = variable_get("questions_page_limit", 30);
 	$offset = (isset($_REQUEST["page"])) ? (intval($_REQUEST["page"])-1)*$limit : 0;
-	$questions = db_query("select q.qid as qid, q.body as qbody, q.created as qcreated, q.uid as quid, a.qid as aid, a.body as abody, a.created as acreated, a.parent as aqid, q.name as qname, a.name as aname from {questions} q left join {questions} a ON (a.parent = q.qid AND a.qid != q.qid) where q.parent = 0 group by q.qid limit $offset,$limit")
+	$questions = db_query("select q.qid as qid, q.body as qbody, q.created as qcreated, q.uid as quid, a.qid as aid, a.body as abody, a.created as acreated, a.parent as aqid, q.name as qname, a.name as aname from {questions} q left join {questions} a ON (a.parent = q.qid AND a.qid != q.qid) where q.parent = 0 group by q.qid order by q.qid desc limit $offset,$limit")
 					->fetchAll();
 	$data = array("result" => $questions);
 	$output = theme("questions", $data);
 	return $output;
 }
 
+function question_captcha($type = "generate") {
+	if (!isset($_SESSION["question_captcha"]))
+		$_SESSION["question_captcha"] = rand(10, 50);
+	$captcha = ($type == "generate") ? rand(10, 50) : $_SESSION["question_captcha"];
+	$captcha_1 = rand(10, $captcha-5);
+	$captcha_2 = $captcha-$captcha_1;
+	$_SESSION["question_captcha"] = $captcha;
+	return array($captcha_1, $captcha_2, $captcha);
+}
+
+function question_user_form_validate($form, &$form_state) {
+	if (!isset($_SESSION["question_captcha"])) return false;
+	if (question_captcha("get")[2] != $form_state["input"]["captcha"]) form_set_error("captcha", t("Wrong answer!"));
+}
+
+function question_user_form_submit($form, &$form_state) {
+	$query = db_insert('questions')
+			->fields(array(
+				'name' => htmlspecialchars($form_state["input"]["name"]),
+				'body' => htmlspecialchars($form_state["input"]["body"]),
+				'ip' => ip2long($_SERVER["REMOTE_ADDR"]),
+				'parent' => 0,
+				'created' => time(),
+			))->execute();
+	drupal_set_message(t("Your review has been accepted for moderation. Thank you!"));
+}
+
 function question_user_form($form, &$form_state) {
 	
-	$_SESSION["question_captcha"] = rand(10,50);
-	$captcha_1 = rand(10,$_SESSION["question_captcha"]-5);
-	$captcha_2 = $_SESSION["question_captcha"]-$captcha_1;
-	
-	
+	$captcha = (isset($form_state["input"]["captcha"])) ? question_captcha("get") : question_captcha("generate");
 	$form['name'] = array(
 		'#type' => 'textfield',
 		'#title' => t('What is your name?'),
@@ -51,15 +74,15 @@ function question_user_form($form, &$form_state) {
 	$form['body'] = array(
 		'#type' => 'textarea',
 		'#title' => t('Type your question/review'),
-		'#size' => 64,
+		'#size' => 1024,
 		'#resizable' => false,
-		'#maxlength' => 64,
+		'#maxlength' => 1024,
 		'#required' => TRUE,
 	);
 	
 	$form['captcha'] = array(
 		'#type' => 'textfield',
-		'#title' => t('Follow the action: :action', array(":action" => $captcha_1 . "+" . $captcha_2 . " ")),
+		'#title' => t('Follow the action: :action', array(":action" => $captcha[0] . "+" . $captcha[1] . " ")),
 		'#size' => 64,
 		'#resizable' => false,
 		'#maxlength' => 64,
@@ -73,12 +96,6 @@ function question_user_form($form, &$form_state) {
 	);
   
   return $form;
-}
-
-function question_user_form_validate($form, &$form_state) {
-}
-
-function question_user_form_submit($form, &$form_state) {
 }
 
 function question_actions() {

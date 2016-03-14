@@ -1,4 +1,4 @@
-<h1><?php echo variable_get("questions_title", t("Questions")); ?></h1>
+<h1><?php echo variable_get("questions_title", t("Отзывы")); ?></h1>
 <?php foreach ($result as $row): ?>
 <div class="questions">
 	<div class="question">
@@ -8,7 +8,7 @@
 	</div>
 	<?php if ($row->aid): ?>
 	<div class="answer">
-		<div class="answer-row-name">Ответил: <b><?php echo $row->aname; ?></b> в <?php echo format_date($row->acreated); ?></div>
+		<div class="answer-row-name">Ответил: <b><?php echo $row->aname; ?></b> в <?php echo format_date($row->acreated, "short"); ?></div>
 		<div class="answer-row-body"><?php echo $row->abody; ?></div>
 	</div>
 	<?php endif; ?>
