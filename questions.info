@@ -1,0 +1,4 @@
+name = Questions
+description = A simple Drupal-module for questions or reviews
+core = 7.x
+configure = admin/config/content/questions

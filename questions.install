@@ -1,0 +1,54 @@
+<?php
+/**
+ * Implements hook_schema().
+ */
+function questions_schema() {
+  $schema['questions'] = array(
+    'description' => 'Questions table',
+    'fields' => array(
+      'qid' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'An entity ID.',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'description' => 'Author Name.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'description' => 'Author ID.',
+      ),
+      'body' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'description' => 'Question or answer text.',
+      ),
+      'parent' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Parent question.',
+      ),
+      'ip' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Author IP.',
+      ),
+      'created' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Unixtime.',
+      ),
+    ),
+    'primary key' => array('qid'),
+  );
+
+  return $schema;
+}

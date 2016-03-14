@@ -1,0 +1,106 @@
+<?php
+
+function questions_menu() {
+	$items['admin/config/content/questions'] = array(
+		'title' => 'Questions',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('questions_settings_form'),
+		'access arguments' => array('administer questions'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 10,
+		'file' => 'questions.admin.inc',
+	);
+	$items['admin/config/content/questions/question'] = array(
+		'page callback' => 'question_actions',
+		'page arguments' => array('questions_settings_form'),
+		'access arguments' => array('administer questions'),
+	);
+	$items[variable_get("questions_path", "questions")] = array(
+		'page callback' => 'questions_list',
+		'access arguments' => TRUE,
+		'access callback' => TRUE,
+	);
+	return $items;
+}
+
+function questions_list() {
+	$limit = variable_get("questions_page_limit", 30);
+	$offset = (isset($_REQUEST["page"])) ? (intval($_REQUEST["page"])-1)*$limit : 0;
+	$questions = db_query("select q.qid as qid, q.body as qbody, q.created as qcreated, q.uid as quid, a.qid as aid, a.body as abody, a.created as acreated, a.parent as aqid, q.name as qname, a.name as aname from {questions} q left join {questions} a ON (a.parent = q.qid AND a.qid != q.qid) where q.parent = 0 group by q.qid limit $offset,$limit")
+					->fetchAll();
+	$data = array("result" => $questions);
+	$output = theme("questions", $data);
+	return $output;
+}
+
+function question_user_form($form, &$form_state) {
+	
+	$_SESSION["question_captcha"] = rand(10,50);
+	$captcha_1 = rand(10,$_SESSION["question_captcha"]-5);
+	$captcha_2 = $_SESSION["question_captcha"]-$captcha_1;
+	
+	
+	$form['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('What is your name?'),
+		'#size' => 64,
+		'#maxlength' => 64,
+		'#required' => TRUE,
+	);
+	
+	$form['body'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Type your question/review'),
+		'#size' => 64,
+		'#resizable' => false,
+		'#maxlength' => 64,
+		'#required' => TRUE,
+	);
+	
+	$form['captcha'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Follow the action: :action', array(":action" => $captcha_1 . "+" . $captcha_2 . " ")),
+		'#size' => 64,
+		'#resizable' => false,
+		'#maxlength' => 64,
+		'#required' => TRUE,
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#attributes' => array('class' => array('ui-button')),
+		'#value' => t('Submit'),
+	);
+  
+  return $form;
+}
+
+function question_user_form_validate($form, &$form_state) {
+}
+
+function question_user_form_submit($form, &$form_state) {
+}
+
+function question_actions() {
+	if (!isset($_REQUEST["qid"]) || !isset($_REQUEST["action"])) die(json_encode(array()));
+	if (!is_numeric($_REQUEST["qid"])) die(json_encode(array()));
+	switch($_REQUEST["action"]):
+		case "activate": $query = "update {questions} set active = 1 where qid = :qid"; break;
+		case "remove": $query = "delete from {questions} where qid = :qid"; break;
+		default: die(json_encode(array())); break;
+	endswitch;
+	db_query($query, array(":qid" => intval($_REQUEST["qid"])));
+	die(json_encode(array("status" => "executed")));
+}
+
+function questions_theme(){
+    return array(
+        'questions'=> array(
+            'template'=>'questions',
+        )
+    );
+}
+
+function questions_init() {
+	
+}
